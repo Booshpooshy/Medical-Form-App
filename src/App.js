@@ -9,8 +9,11 @@ function App() {
     date: '',
     chiefComplaint: '',
     pastMedicalHistory: '',
+    socialHistory: '',
+    surgicalHistory: '',
     allergies: '',
     currentMeds: '',
+    historyOfPresentIllness: '',
     // Physical Exam - Column 1
     gen: '',
     head: '',
@@ -32,14 +35,7 @@ function App() {
     cerebellar: '',
     sensory: '',
     cns: '',
-    // Problem List & Recommendations
-    problem1: '',
-    problem2: '',
-    problem3: '',
-    problem4: '',
-    problem5: '',
-    problem6: '',
-    recommendations: '',
+    assessmentPlan: '',
     // Signatures
     printName: '',
     signature: '',
@@ -48,14 +44,87 @@ function App() {
 
   const formRef = useRef();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [folderName, setFolderName] = useState('');
 
+  // Load folder preference from localStorage on component mount
+  React.useEffect(() => {
+    const savedFolderName = localStorage.getItem('preferredFolder');
+    if (savedFolderName) {
+      setFolderName(savedFolderName);
+    }
+    // Set zoom to 125% on mount
+    document.body.style.zoom = '1.25';
+  }, []);
+
+  // Update handleInputChange to support contentEditable divs
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    // For contentEditable divs, use innerText
+    const newValue = type === undefined ? e.target.innerText : value;
     setFormData(prevState => ({
       ...prevState,
-      [name]: value
+      [name]: newValue
     }));
+  };
+
+  // Auto-resize textarea to fit content
+  const autoResizeTextarea = (e) => {
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  };
+
+  const selectFolder = async () => {
+    try {
+      if ('showDirectoryPicker' in window) {
+        const dirHandle = await window.showDirectoryPicker();
+        setSelectedFolder(dirHandle);
+        setFolderName(dirHandle.name);
+        
+        // Store folder preference in localStorage
+        localStorage.setItem('preferredFolder', dirHandle.name);
+        
+        // Show success message
+        alert(`Folder selected: ${dirHandle.name}\nPDFs will be saved to this folder automatically.`);
+      } else {
+        alert('Folder selection is not supported in this browser. PDFs will be saved to your default downloads folder.');
+      }
+    } catch (error) {
+      console.error('Error selecting folder:', error);
+      if (error.name === 'AbortError') {
+        // User cancelled folder selection
+        return;
+      }
+      alert('Error selecting folder. Please try again.');
+    }
+  };
+
+  const clearFolderSelection = () => {
+    setSelectedFolder(null);
+    setFolderName('');
+    localStorage.removeItem('preferredFolder');
+    alert('Folder selection cleared. PDFs will be saved to your default downloads folder.');
+  };
+
+  const saveToFolder = async (pdfBlob, filename) => {
+    if (selectedFolder) {
+      try {
+        // Create a new file in the selected folder
+        const fileHandle = await selectedFolder.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(pdfBlob);
+        await writable.close();
+        
+        return true;
+      } catch (error) {
+        console.error('Error saving to folder:', error);
+        return false;
+      }
+    }
+    return false;
   };
 
   const exportToPDF = async () => {
@@ -93,7 +162,7 @@ function App() {
       heightLeft -= pageHeight;
 
       // Add additional pages if needed
-      while (heightLeft >= 0) {
+      while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
@@ -111,12 +180,27 @@ function App() {
       const date = formData.date || new Date().toISOString().split('T')[0];
       const filename = `History_Physical_${patientName}_${date}.pdf`;
 
-      // Download the PDF
-      pdf.save(filename);
-      
-      // Show success message
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 5000); // Hide after 5 seconds
+      // Convert PDF to blob
+      const pdfBlob = pdf.output('blob');
+
+      // Try to save to selected folder first
+      const savedToFolder = await saveToFolder(pdfBlob, filename);
+
+      if (savedToFolder) {
+        // Successfully saved to folder
+        setSuccessMessage(`✅ PDF saved to folder: ${folderName}`);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 5000);
+      } else {
+        // Fallback to regular download
+        pdf.save(filename);
+        const message = selectedFolder 
+          ? '✅ PDF exported successfully! (Folder access failed, saved to downloads)'
+          : '✅ PDF exported successfully! Check your downloads folder.';
+        setSuccessMessage(message);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 5000);
+      }
       
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -132,8 +216,11 @@ function App() {
       date: '',
       chiefComplaint: '',
       pastMedicalHistory: '',
+      socialHistory: '',
+      surgicalHistory: '',
       allergies: '',
       currentMeds: '',
+      historyOfPresentIllness: '',
       gen: '',
       head: '',
       eyes: '',
@@ -153,13 +240,7 @@ function App() {
       cerebellar: '',
       sensory: '',
       cns: '',
-      problem1: '',
-      problem2: '',
-      problem3: '',
-      problem4: '',
-      problem5: '',
-      problem6: '',
-      recommendations: '',
+      assessmentPlan: '',
       printName: '',
       signature: '',
       signatureDate: ''
@@ -179,7 +260,7 @@ function App() {
       {/* Success Message */}
       {showSuccessMessage && (
         <div className="success-message">
-          <p>✅ PDF exported successfully! Check your downloads folder.</p>
+          <p>{successMessage}</p>
         </div>
       )}
 
@@ -196,12 +277,20 @@ function App() {
           >
             {isExporting ? 'Generating PDF...' : 'Export as PDF'}
           </button>
+          <button onClick={selectFolder} className="btn btn-folder">
+            {selectedFolder ? `📁 ${folderName}` : '📁 Select Folder'}
+          </button>
+          {selectedFolder && (
+            <button onClick={clearFolderSelection} className="btn btn-clear" style={{backgroundColor: '#95a5a6', fontSize: '0.9rem', padding: '8px 16px'}}>
+              Clear Folder
+            </button>
+          )}
         </div>
       </div>
 
       <div className="pdf-container" ref={formRef}>
-        {/* PAGE 1 */}
-        <div className="pdf-page page-1">
+        {/* SINGLE PAGE FOR ALL CONTENT */}
+        <div className="pdf-page">
           <div className="pdf-header">
             <h2>HISTORY AND PHYSICAL</h2>
             <div className="patient-info">
@@ -226,56 +315,106 @@ function App() {
             </div>
           </div>
 
-          <div className="chief-complaint-section">
+          <div className="chief-complaint-section" style={{marginBottom: 0}}>
             <h3>CHIEF COMPLAINT</h3>
-            <input
-              type="text"
+            <div
+              contentEditable={true}
               name="chiefComplaint"
-              value={formData.chiefComplaint}
-              onChange={handleInputChange}
-              className="pdf-text-input"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
               placeholder="Enter chief complaint..."
-            />
+              style={{minHeight: '12px'}}
+            >{formData.chiefComplaint}</div>
           </div>
 
-          <div className="history-section">
+          <div className="history-section" style={{marginBottom: 0}}>
             <h3>PAST MEDICAL HISTORY</h3>
-            <textarea
+            <div
+              contentEditable={true}
               name="pastMedicalHistory"
-              value={formData.pastMedicalHistory}
-              onChange={handleInputChange}
-              className="pdf-textarea"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
               placeholder="Enter past medical history..."
-            />
-            
+              style={{minHeight: '12px'}}
+            >{formData.pastMedicalHistory}</div>
+          </div>
+
+          <div className="history-section" style={{marginBottom: 0}}>
+            <h3>SOCIAL HISTORY</h3>
+            <div
+              contentEditable={true}
+              name="socialHistory"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
+              placeholder="Smoking, alcohol, occupation, living situation, social support..."
+              style={{minHeight: '12px'}}
+            >{formData.socialHistory}</div>
+          </div>
+
+          <div className="history-section" style={{marginBottom: 0}}>
+            <h3>SURGICAL HISTORY</h3>
+            <div
+              contentEditable={true}
+              name="surgicalHistory"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
+              placeholder="Previous surgeries, procedures, dates, complications..."
+              style={{minHeight: '12px'}}
+            >{formData.surgicalHistory}</div>
+          </div>
+
+          <div className="history-section" style={{marginBottom: 0}}>
+            <h3>MEDICATIONS & ALLERGIES</h3>
             <div className="allergies-meds">
               <div className="allergies">
                 <span className="label">Allergies:</span>
-                <input
-                  type="text"
+                <div
+                  contentEditable={true}
                   name="allergies"
-                  value={formData.allergies}
-                  onChange={handleInputChange}
-                  className="pdf-input"
-                />
+                  suppressContentEditableWarning={true}
+                  onInput={handleInputChange}
+                  className="pdf-textarea compact-textarea editable-div"
+                  placeholder="List allergies..."
+                  style={{minHeight: '12px'}}
+                >{formData.allergies}</div>
               </div>
               <div className="meds">
                 <span className="label">CURRENT MEDS:</span>
-                <input
-                  type="text"
+                <div
+                  contentEditable={true}
                   name="currentMeds"
-                  value={formData.currentMeds}
-                  onChange={handleInputChange}
-                  className="pdf-input"
-                />
+                  suppressContentEditableWarning={true}
+                  onInput={handleInputChange}
+                  className="pdf-textarea compact-textarea editable-div"
+                  placeholder="List current medications..."
+                  style={{minHeight: '12px'}}
+                >{formData.currentMeds}</div>
               </div>
             </div>
+          </div>
+
+          <div className="history-section" style={{marginBottom: 0}}>
+            <h3>HISTORY OF PRESENT ILLNESS</h3>
+            <div
+              contentEditable={true}
+              name="historyOfPresentIllness"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
+              placeholder="Describe the history of present illness..."
+              style={{minHeight: '12px'}}
+            >{formData.historyOfPresentIllness}</div>
           </div>
 
           <div className="physical-exam-section">
             <h3>PHYSICAL EXAMINATION</h3>
             <div className="exam-columns">
               <div className="exam-column">
+                {/* Column 1 exam items */}
                 <div className="exam-item">
                   <span className="exam-label">GEN:</span>
                   <input
@@ -377,8 +516,8 @@ function App() {
                   />
                 </div>
               </div>
-              
               <div className="exam-column">
+                {/* Column 2 exam items */}
                 <div className="exam-item">
                   <span className="exam-label">RECTAL:</span>
                   <input
@@ -472,91 +611,24 @@ function App() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* PAGE 2 */}
-        <div className="pdf-page page-2">
-          <div className="problem-list-section">
-            <h3>PROBLEM LIST</h3>
-            <div className="problem-items">
-              <div className="problem-item">
-                <span className="problem-number">1.</span>
-                <input
-                  type="text"
-                  name="problem1"
-                  value={formData.problem1}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-              <div className="problem-item">
-                <span className="problem-number">2.</span>
-                <input
-                  type="text"
-                  name="problem2"
-                  value={formData.problem2}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-              <div className="problem-item">
-                <span className="problem-number">3.</span>
-                <input
-                  type="text"
-                  name="problem3"
-                  value={formData.problem3}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-              <div className="problem-item">
-                <span className="problem-number">4.</span>
-                <input
-                  type="text"
-                  name="problem4"
-                  value={formData.problem4}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-              <div className="problem-item">
-                <span className="problem-number">5.</span>
-                <input
-                  type="text"
-                  name="problem5"
-                  value={formData.problem5}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-              <div className="problem-item">
-                <span className="problem-number">6.</span>
-                <input
-                  type="text"
-                  name="problem6"
-                  value={formData.problem6}
-                  onChange={handleInputChange}
-                  className="problem-input"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="recommendations-section">
-            <h3>RECOMMENDATIONS</h3>
-            <textarea
-              name="recommendations"
-              value={formData.recommendations}
-              onChange={handleInputChange}
-              className="pdf-textarea"
-              placeholder="Enter recommendations..."
-            />
+          <div className="assessment-plan-section" style={{marginBottom: 0}}>
+            <h3>ASSESSMENT & PLAN</h3>
+            <div
+              contentEditable={true}
+              name="assessmentPlan"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
+              placeholder="Enter assessment and plan..."
+              style={{minHeight: '12px'}}
+            >{formData.assessmentPlan}</div>
           </div>
 
           <div className="signature-section">
-            <div className="signature-row">
-              <div className="signature-item">
-                <span className="label">Print Name:</span>
+            <div className="signature-row" style={{display: 'flex', gap: 2, margin: 0, padding: 0}}>
+              <div className="signature-item" style={{flex: 1, minWidth: 0, margin: 0, padding: 0}}>
+                <span className="label">Name:</span>
                 <input
                   type="text"
                   name="printName"
@@ -565,22 +637,22 @@ function App() {
                   className="signature-input"
                 />
               </div>
-              <div className="signature-item">
-                <span className="label">Signature:</span>
-                <input
-                  type="text"
-                  name="signature"
-                  value={formData.signature}
-                  onChange={handleInputChange}
-                  className="signature-input"
-                />
-              </div>
-              <div className="signature-item">
-                <span className="label">Date of Visit:</span>
+              <div className="signature-item" style={{flex: 1, minWidth: 0, margin: 0, padding: 0}}>
+                <span className="label">Date:</span>
                 <input
                   type="date"
                   name="signatureDate"
                   value={formData.signatureDate}
+                  onChange={handleInputChange}
+                  className="signature-input"
+                />
+              </div>
+              <div className="signature-item" style={{flex: 1, minWidth: 0, margin: 0, padding: 0}}>
+                <span className="label">Sign:</span>
+                <input
+                  type="text"
+                  name="signature"
+                  value={formData.signature}
                   onChange={handleInputChange}
                   className="signature-input"
                 />
