@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import './App.css';
+import html2pdf from 'html2pdf.js';
+import CryptoJS from 'crypto-js';
 
 function App() {
   const [formData, setFormData] = useState({
@@ -46,85 +48,212 @@ function App() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState(null);
-  const [folderName, setFolderName] = useState('');
+  const [sessionStartTime, setSessionStartTime] = useState(Date.now());
+  const [sessionWarning, setSessionWarning] = useState(false);
+  const [encryptionKey, setEncryptionKey] = useState('');
 
-  // Load folder preference from localStorage on component mount
-  React.useEffect(() => {
-    const savedFolderName = localStorage.getItem('preferredFolder');
-    if (savedFolderName) {
-      setFolderName(savedFolderName);
-    }
+  // Security and session management
+  useEffect(() => {
+    // Generate session encryption key
+    const sessionKey = CryptoJS.lib.WordArray.random(256/8).toString();
+    setEncryptionKey(sessionKey);
+    
+    
     // Set zoom to 125% on mount
     document.body.style.zoom = '1.25';
+    
+    // Session timeout warning (25 minutes)
+    const warningTimer = setTimeout(() => {
+      setSessionWarning(true);
+    }, 25 * 60 * 1000);
+    
+    // Auto-clear session (30 minutes)
+    const clearTimer = setTimeout(() => {
+      clearAllData();
+      alert('Session expired. All data has been cleared for security.');
+    }, 30 * 60 * 1000);
+    
+    // Clear data on page unload
+    const handleUnload = () => {
+      clearAllData();
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    
+    // Prevent right-click context menu for security
+    const handleContextMenu = (e) => e.preventDefault();
+    document.addEventListener('contextmenu', handleContextMenu);
+    
+    // Enhanced auto-resize and text wrapping initialization
+    const initAutoResize = () => {
+      const textElements = document.querySelectorAll('textarea, [contentEditable="true"]');
+      textElements.forEach(element => {
+        // Force wrapping properties
+        element.style.whiteSpace = 'pre-wrap';
+        element.style.wordWrap = 'break-word';
+        element.style.overflowWrap = 'anywhere';
+        element.style.wordBreak = 'break-word';
+        
+        // Initial resize
+        autoResizeElement(element);
+        
+        // Add multiple event listeners for comprehensive coverage
+        element.addEventListener('input', (e) => {
+          setTimeout(() => autoResizeElement(e.target), 0);
+        });
+        element.addEventListener('paste', (e) => {
+          setTimeout(() => autoResizeElement(e.target), 10);
+        });
+        element.addEventListener('keyup', (e) => {
+          autoResizeElement(e.target);
+        });
+      });
+    };
+    
+    // Initialize with longer delay and re-run periodically
+    setTimeout(initAutoResize, 200);
+    setTimeout(initAutoResize, 1000); // Backup initialization
+    
+    return () => {
+      clearTimeout(warningTimer);
+      clearTimeout(clearTimer);
+      window.removeEventListener('beforeunload', handleUnload);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, []);
 
-  // Update handleInputChange to support contentEditable divs
+  // Security functions
+  const encryptData = (data) => {
+    return CryptoJS.AES.encrypt(JSON.stringify(data), encryptionKey).toString();
+  };
+  
+  const decryptData = (encryptedData) => {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey);
+      return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    } catch (error) {
+      return null;
+    }
+  };
+  
+  const clearAllData = () => {
+    // Clear form data
+    setFormData({
+      patientName: '', date: '', chiefComplaint: '', pastMedicalHistory: '',
+      socialHistory: '', surgicalHistory: '', allergies: '', currentMeds: '',
+      historyOfPresentIllness: '', gen: '', head: '', eyes: '', face: '',
+      throat: '', breast: '', chest: '', card: '', abdomen: '', gu: '',
+      rectal: '', skin: '', ext: '', back: '', neuro: '', motor: '',
+      cerebellar: '', sensory: '', cns: '', assessmentPlan: '',
+      printName: '', signature: '', signatureDate: ''
+    });
+    
+    // Clear all form inputs visually
+    const inputs = document.querySelectorAll('input, [contentEditable]');
+    inputs.forEach(input => {
+      if (input.contentEditable === 'true') {
+        input.textContent = '';
+      } else {
+        input.value = '';
+      }
+    });
+    
+    // Clear session storage and local storage of sensitive data
+    sessionStorage.clear();
+    const keysToKeep = ['preferredFolder'];
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach(key => {
+      if (!keysToKeep.includes(key)) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Reset session timer
+    setSessionStartTime(Date.now());
+    setSessionWarning(false);
+  };
+
+  // Enhanced auto-resize function for expanding text areas
+  const autoResizeElement = (element) => {
+    if (element.tagName === 'TEXTAREA' || element.contentEditable === 'true') {
+      // Force text wrapping and proper sizing
+      element.style.overflowY = 'hidden';
+      element.style.height = 'auto';
+      
+      // Calculate required height based on content
+      const scrollHeight = element.scrollHeight;
+      const lineHeight = parseInt(window.getComputedStyle(element).lineHeight) || 20;
+      const padding = parseInt(window.getComputedStyle(element).paddingTop) + 
+                      parseInt(window.getComputedStyle(element).paddingBottom);
+      
+      // Set minimum height to single line, maximum to reasonable limit
+      const minHeight = lineHeight + padding;
+      const maxHeight = Math.min(150, lineHeight * 8 + padding);
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight));
+      
+      element.style.height = newHeight + 'px';
+      
+      // Enable scrolling only if content exceeds max height
+      if (scrollHeight > maxHeight) {
+        element.style.overflowY = 'auto';
+      }
+    }
+  };
+
+  // Update handleInputChange to support contentEditable divs with encryption and auto-resize
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
-    // For contentEditable divs, use innerText
     const newValue = type === undefined ? e.target.innerText : value;
+    
+    // Auto-resize the element
+    autoResizeElement(e.target);
+    
     setFormData(prevState => ({
       ...prevState,
       [name]: newValue
     }));
+    
+    // Store encrypted data in session storage as backup
+    const updatedData = { ...formData, [name]: newValue };
+    sessionStorage.setItem('encryptedFormData', encryptData(updatedData));
   };
 
   // Auto-resize textarea to fit content
   const autoResizeTextarea = (e) => {
     const textarea = e.target;
+    // Reset height to auto to get the correct scrollHeight
     textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
+    // Set height to match content, with minimum height
+    textarea.style.height = Math.max(24, textarea.scrollHeight) + 'px';
   };
 
-  const selectFolder = async () => {
-    try {
-      if ('showDirectoryPicker' in window) {
-        const dirHandle = await window.showDirectoryPicker();
-        setSelectedFolder(dirHandle);
-        setFolderName(dirHandle.name);
-        
-        // Store folder preference in localStorage
-        localStorage.setItem('preferredFolder', dirHandle.name);
-        
-        // Show success message
-        alert(`Folder selected: ${dirHandle.name}\nPDFs will be saved to this folder automatically.`);
+
+  // Function to wrap text into lines with optimized edge-to-edge utilization
+  const wrapTextForDisplay = (text, maxCharsPerLine = 170) => {
+    if (!text) return '';
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      // If single word is too long, break it
+      if (word.length > maxCharsPerLine) {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = '';
+        }
+        // Break long word into chunks
+        for (let i = 0; i < word.length; i += maxCharsPerLine) {
+          lines.push(word.slice(i, i + maxCharsPerLine));
+        }
+      } else if ((currentLine + ' ' + word).length <= maxCharsPerLine) {
+        currentLine += (currentLine ? ' ' : '') + word;
       } else {
-        alert('Folder selection is not supported in this browser. PDFs will be saved to your default downloads folder.');
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
       }
-    } catch (error) {
-      console.error('Error selecting folder:', error);
-      if (error.name === 'AbortError') {
-        // User cancelled folder selection
-        return;
-      }
-      alert('Error selecting folder. Please try again.');
-    }
-  };
-
-  const clearFolderSelection = () => {
-    setSelectedFolder(null);
-    setFolderName('');
-    localStorage.removeItem('preferredFolder');
-    alert('Folder selection cleared. PDFs will be saved to your default downloads folder.');
-  };
-
-  const saveToFolder = async (pdfBlob, filename) => {
-    if (selectedFolder) {
-      try {
-        // Create a new file in the selected folder
-        const fileHandle = await selectedFolder.getFileHandle(filename, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(pdfBlob);
-        await writable.close();
-        
-        return true;
-      } catch (error) {
-        console.error('Error saving to folder:', error);
-        return false;
-      }
-    }
-    return false;
+    });
+    if (currentLine) lines.push(currentLine);
+    return lines.join('<br>');
   };
 
   const exportToPDF = async () => {
@@ -132,78 +261,74 @@ function App() {
     if (!element) return;
 
     setIsExporting(true);
-    
+
     try {
-      // Create canvas from the form element
-      const canvas = await html2canvas(element, {
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight
+      // Convert all contentEditable divs to plain text with <br> tags for PDF
+      const editableDivs = element.querySelectorAll('[contenteditable="true"]');
+      const originalContents = new Map();
+      
+      editableDivs.forEach(div => {
+        const originalContent = div.innerHTML;
+        originalContents.set(div, originalContent);
+        const textContent = div.textContent || div.innerText || '';
+        const wrappedText = wrapTextForDisplay(textContent, 160);
+        div.innerHTML = wrappedText;
+        div.style.whiteSpace = 'normal';
+        div.style.wordBreak = 'break-word';
+        div.style.height = 'auto';
+        div.style.minHeight = '60px';
       });
 
-      // Convert canvas to image
-      const imgData = canvas.toDataURL('image/png');
-
-      // Calculate PDF dimensions
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if needed
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Add HIPAA compliance notice to PDF
-      const timestamp = new Date().toLocaleString();
-      pdf.setFontSize(8);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(`Generated: ${timestamp} | HIPAA Compliant | Dr. El Masry Medical Form`, 10, 290);
+      // Add the pdf-exporting class for fit-content sizing
+      element.classList.add('pdf-exporting');
 
       // Generate filename with patient name and date
-      const patientName = formData.patientName || 'Patient';
-      const date = formData.date || new Date().toISOString().split('T')[0];
-      const filename = `History_Physical_${patientName}_${date}.pdf`;
+      const patientName = (formData.patientName || 'Unknown_Patient').replace(/[^a-zA-Z0-9]/g, '_');
+      const formDate = formData.date || new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toLocaleTimeString('en-US', {hour12: false}).replace(/:/g, '-');
+      const filename = `${patientName}_${formDate}_${timestamp}_History_Physical.pdf`;
 
-      // Convert PDF to blob
-      const pdfBlob = pdf.output('blob');
+      const opt = {
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#fff',
+          allowTaint: true,
+          useCORS: true,
+          scrollX: 0,
+          scrollY: 0
+        },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+      };
 
-      // Try to save to selected folder first
-      const savedToFolder = await saveToFolder(pdfBlob, filename);
+      // Brief delay for CSS fit-content to take effect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await html2pdf().set(opt).from(element).save();
 
-      if (savedToFolder) {
-        // Successfully saved to folder
-        setSuccessMessage(`✅ PDF saved to folder: ${folderName}`);
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 5000);
-      } else {
-        // Fallback to regular download
-        pdf.save(filename);
-        const message = selectedFolder 
-          ? '✅ PDF exported successfully! (Folder access failed, saved to downloads)'
-          : '✅ PDF exported successfully! Check your downloads folder.';
-        setSuccessMessage(message);
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 5000);
-      }
-      
+      // Remove the pdf-exporting class after export
+      element.classList.remove('pdf-exporting');
+
+      // Restore original content in contentEditable divs
+      editableDivs.forEach(div => {
+        const originalContent = originalContents.get(div);
+        div.innerHTML = originalContent;
+        div.style.whiteSpace = '';
+        div.style.wordBreak = '';
+        div.style.height = '';
+        div.style.minHeight = '';
+      });
+
+      // Show success message with file location info
+      setSuccessMessage(`✅ PDF exported as: ${filename}\n📁 Saved to Downloads folder`);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 5000);
+
     } catch (error) {
       console.error('Error generating PDF:', error);
+      element.classList.remove('pdf-exporting');
       alert('Error generating PDF. Please try again.');
     } finally {
       setIsExporting(false);
@@ -211,51 +336,40 @@ function App() {
   };
 
   const createNewForm = () => {
-    setFormData({
-      patientName: '',
-      date: '',
-      chiefComplaint: '',
-      pastMedicalHistory: '',
-      socialHistory: '',
-      surgicalHistory: '',
-      allergies: '',
-      currentMeds: '',
-      historyOfPresentIllness: '',
-      gen: '',
-      head: '',
-      eyes: '',
-      face: '',
-      throat: '',
-      breast: '',
-      chest: '',
-      card: '',
-      abdomen: '',
-      gu: '',
-      rectal: '',
-      skin: '',
-      ext: '',
-      back: '',
-      neuro: '',
-      motor: '',
-      cerebellar: '',
-      sensory: '',
-      cns: '',
-      assessmentPlan: '',
-      printName: '',
-      signature: '',
-      signatureDate: ''
-    });
+    if (confirm('This will clear all current data. Are you sure?')) {
+      clearAllData();
+    }
+  };
+
+  
+  
+  const extendSession = () => {
+    setSessionStartTime(Date.now());
+    setSessionWarning(false);
   };
 
   return (
     <div className="App">
-      {/* HIPAA Compliance Notice */}
-      <div className="hipaa-notice">
-        <p>🔒 HIPAA Compliant - Patient data is processed securely and not stored on servers</p>
-        <p style={{fontSize: '12px', marginTop: '5px', opacity: '0.8'}}>
-          Session timeout: 30 minutes | Data encryption: 256-bit | No server storage
-        </p>
-      </div>
+
+      {/* Session Warning */}
+      {sessionWarning && (
+        <div style={{
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '5px',
+          padding: '15px', zIndex: 1000, boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          <p style={{margin: 0, color: '#856404'}}>
+            ⚠️ Session expires in 5 minutes. Extend session or data will be cleared.
+          </p>
+          <button onClick={extendSession} style={{
+            marginTop: '10px', backgroundColor: '#28a745', color: 'white',
+            border: 'none', padding: '5px 10px', borderRadius: '3px', cursor: 'pointer'
+          }}>
+            Extend Session
+          </button>
+        </div>
+      )}
+
 
       {/* Success Message */}
       {showSuccessMessage && (
@@ -272,19 +386,11 @@ function App() {
           </button>
           <button 
             onClick={exportToPDF} 
-            className="btn btn-print"
+            className="btn btn-export"
             disabled={isExporting}
           >
-            {isExporting ? 'Generating PDF...' : 'Export as PDF'}
+            {isExporting ? 'Generating PDF...' : 'Export PDF'}
           </button>
-          <button onClick={selectFolder} className="btn btn-folder">
-            {selectedFolder ? `📁 ${folderName}` : '📁 Select Folder'}
-          </button>
-          {selectedFolder && (
-            <button onClick={clearFolderSelection} className="btn btn-clear" style={{backgroundColor: '#95a5a6', fontSize: '0.9rem', padding: '8px 16px'}}>
-              Clear Folder
-            </button>
-          )}
         </div>
       </div>
 
@@ -417,196 +523,349 @@ function App() {
                 {/* Column 1 exam items */}
                 <div className="exam-item">
                   <span className="exam-label">GEN:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="gen"
-                    value={formData.gen}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                    placeholder="Type here..."
+                  >{formData.gen}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">HEAD:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="head"
-                    value={formData.head}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.head}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">EYES:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="eyes"
-                    value={formData.eyes}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.eyes}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">FACE:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="face"
-                    value={formData.face}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.face}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">THROAT:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="throat"
-                    value={formData.throat}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.throat}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">BREAST:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="breast"
-                    value={formData.breast}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.breast}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">CHEST:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="chest"
-                    value={formData.chest}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.chest}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">CARD:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="card"
-                    value={formData.card}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.card}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">ABDOMEN:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="abdomen"
-                    value={formData.abdomen}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.abdomen}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">GU:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="gu"
-                    value={formData.gu}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.gu}</div>
                 </div>
               </div>
               <div className="exam-column">
                 {/* Column 2 exam items */}
                 <div className="exam-item">
                   <span className="exam-label">RECTAL:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="rectal"
-                    value={formData.rectal}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.rectal}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">SKIN:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="skin"
-                    value={formData.skin}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.skin}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">EXT:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="ext"
-                    value={formData.ext}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.ext}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">BACK:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="back"
-                    value={formData.back}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.back}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">NEURO:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="neuro"
-                    value={formData.neuro}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.neuro}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">MOTOR:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="motor"
-                    value={formData.motor}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.motor}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">CEREBELLAR:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="cerebellar"
-                    value={formData.cerebellar}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.cerebellar}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">SENSORY:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="sensory"
-                    value={formData.sensory}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.sensory}</div>
                 </div>
                 <div className="exam-item">
                   <span className="exam-label">CN's:</span>
-                  <input
-                    type="text"
+                  <div
+                    contentEditable={true}
                     name="cns"
-                    value={formData.cns}
-                    onChange={handleInputChange}
+                    suppressContentEditableWarning={true}
+                    onInput={handleInputChange}
                     className="exam-input"
-                  />
+                    style={{
+                      minHeight: '24px',
+                      maxHeight: '80px',
+                      overflow: 'auto',
+                      border: '1px solid #333',
+                      padding: '4px 6px',
+                      backgroundColor: 'white'
+                    }}
+                  >{formData.cns}</div>
                 </div>
               </div>
             </div>

@@ -74,7 +74,7 @@ body {
 
 /* Header styles */
 .header {
-  background: linear-gradient(135deg, #2c3e50, #3498db);
+  background: #4a6fa5;
   color: white;
   padding: 20px;
   border-radius: 10px;
@@ -119,13 +119,13 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.btn-print {
-  background-color: #e74c3c;
+.btn-export {
+  background-color: #dc3545;
   color: white;
 }
 
-.btn-print:hover {
-  background-color: #c0392b;
+.btn-export:hover {
+  background-color: #c82333;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
@@ -146,20 +146,20 @@ body {
   background: white;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
-  width: 100%;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 794px;
+  max-width: 794px;
+  min-width: 794px;
+  margin: 0 auto;
+  padding: 0;
+  /* Remove any height restrictions */
 }
 
 .pdf-page {
-  padding: 15px;
-  min-height: 11in;
-  background: white;
-  page-break-after: always;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: visible;
+  padding: 0;
+  min-height: unset;
+  box-shadow: none;
+  margin: 0;
+  /* Remove any height restrictions */
 }
 
 .page-2 {
@@ -169,30 +169,38 @@ body {
 /* PDF Header */
 .pdf-header {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border-bottom: 2px solid #000;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .pdf-header h2 {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   color: #000;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
+  text-align: center;
+  width: 100%;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .patient-info {
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .info-row {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 40px;
+  flex-wrap: nowrap;
+  justify-content: center;
+  width: 100%;
 }
 
 .label {
@@ -234,14 +242,15 @@ body {
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
-/* Compact textarea for multi-line, filled, compact style */
+/* Auto-expanding textarea for multi-line content */
 .compact-textarea {
-  font-size: 0.6rem;
-  line-height: 1.02;
-  min-height: 12px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  min-height: 20px;
+  max-height: 200px;
   resize: vertical;
-  padding: 0;
-  margin: 0;
+  padding: 4px 6px;
+  margin: 2px 0;
   width: 100%;
   box-sizing: border-box;
   overflow-y: auto;
@@ -249,29 +258,37 @@ body {
   word-break: break-word;
   overflow-x: hidden;
   overflow-wrap: break-word;
+  height: auto;
 }
 
-/* Make the form more compact overall */
+/* Balanced compact form with proper spacing */
 .pdf-container {
-  max-width: 600px;
-  padding: 4px;
+  max-width: 750px;
+  padding: 8px;
 }
 
 .pdf-page {
-  padding: 4px;
+  padding: 6px;
   min-height: unset;
   box-shadow: none;
 }
 
 .pdf-textarea, .pdf-input, .exam-input, .signature-input {
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  margin: 1px 0;
+  font-size: 0.9rem;
+  padding: 4px 6px;
+  margin: 2px 0;
+}
+
+.exam-input {
+  text-align: center;
+  vertical-align: middle;
+  height: 2.2em;
+  line-height: 2.2em;
 }
 
 .chief-complaint-section, .history-section, .physical-exam-section, .problem-list-section, .signature-section {
-  margin-bottom: 4px;
-  padding: 2px;
+  margin-bottom: 6px;
+  padding: 4px;
 }
 
 .header h1 {
@@ -281,44 +298,44 @@ body {
 
 /* Chief Complaint Section */
 .chief-complaint-section {
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   border: 1px solid #000;
-  padding: 6px;
+  padding: 2px;
   page-break-inside: avoid;
   page-break-before: auto;
 }
 
 .chief-complaint-section h3 {
   color: #000;
-  font-size: 0.9rem;
-  margin-bottom: 4px;
+  font-size: 0.8rem;
+  margin-bottom: 1px;
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   border-bottom: 1px solid #000;
-  padding-bottom: 3px;
-  line-height: 1.0;
+  padding-bottom: 1px;
+  line-height: 0.8;
   page-break-after: avoid;
 }
 
 /* History Section */
 .history-section {
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   border: 1px solid #000;
-  padding: 6px;
+  padding: 2px;
   page-break-inside: avoid;
 }
 
 .history-section h3 {
   color: #000;
-  font-size: 0.9rem;
-  margin-bottom: 4px;
+  font-size: 0.8rem;
+  margin-bottom: 1px;
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   border-bottom: 1px solid #000;
-  padding-bottom: 3px;
-  line-height: 1.0;
+  padding-bottom: 1px;
+  line-height: 0.8;
 }
 
 .allergies-meds {
@@ -355,41 +372,73 @@ body {
 }
 
 .exam-columns {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
 }
 
 .exam-column {
-  flex: 1;
-  min-width: 0;
+  display: block;
+  width: 100%;
 }
 
 .exam-item {
-  margin-bottom: 2px;
+  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  align-items: start;
+  width: 100%;
 }
 
 .exam-label {
   font-weight: bold;
   color: #000;
-  font-size: 0.8rem;
-  min-width: 60px;
+  font-size: 0.85rem;
   text-transform: uppercase;
+  padding-top: 6px;
+  text-align: right;
 }
 
 .exam-input {
-  flex: 1;
-  padding: 3px 6px;
-  border: 1px solid #000;
-  border-radius: 0;
-  font-size: 0.8rem;
-  font-family: inherit;
-  background: transparent;
+  width: 200px !important;
+  max-width: 200px !important;
+  min-height: 24px !important;
+  max-height: 80px !important;
+  margin: 0 !important;
+  padding: 4px 6px !important;
+  box-sizing: border-box !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  line-height: 1.3 !important;
+  overflow: auto !important;
+  font-family: inherit !important;
+  border: 1px solid #333 !important;
+  background-color: white !important;
+  display: block !important;
+  outline: none !important;
 }
 
 .exam-input:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Universal textarea wrapping rules */
+textarea {
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  hyphens: auto !important;
+  text-wrap: wrap !important;
+  overflow-x: hidden !important;
+  resize: vertical !important;
+  font-family: inherit !important;
 }
 
 /* Problem List Section */
@@ -804,7 +853,7 @@ body {
 
 .pdf-textarea, .pdf-input, .exam-input, .signature-input {
   font-size: 0.6rem;
-  padding: 0;
+
   margin: 0;
   min-height: 12px;
 }
@@ -812,6 +861,29 @@ body {
 .chief-complaint-section, .history-section, .physical-exam-section, .assessment-plan-section, .signature-section {
   margin-bottom: 0;
   padding: 0;
+}
+
+.history-section, .physical-exam-section {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+.history-section > div,
+.physical-exam-section > div {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.history-section *,
+.physical-exam-section * {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  background: none !important;
 }
 
 .header h1 {
@@ -871,6 +943,30 @@ body {
   padding: 0;
 }
 
+.pdf-header, .pdf-header h2, h2, h3 {
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+@media print {
+  .pdf-container, .pdf-page {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .pdf-header, .pdf-header h2, h2, h3 {
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    text-transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+}
+
 @media print {
   .pdf-container {
     max-width: 100vw;
@@ -898,4 +994,239 @@ body {
     margin-bottom: 0 !important;
     padding: 0 !important;
   }
+}
+
+.pdf-container, .pdf-page, .pdf-header, .pdf-header h2, h2, h3, .compact-textarea, .editable-div, .signature-input, .exam-input, .pdf-input {
+  background: #fff !important;
+  color: #000 !important;
+  box-shadow: none !important;
+}
+
+body, html {
+  background: #fff !important;
+  color: #000 !important;
+}
+
+@media print {
+  * {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  .pdf-container, .pdf-page, .pdf-header, .pdf-header h2, h2, h3, .compact-textarea, .editable-div, .signature-input, .exam-input, .pdf-input {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+@media print {
+  body, html, .pdf-container, .pdf-page, .compact-textarea, .editable-div, .exam-input, .pdf-input, .signature-input, h2, h3, .pdf-header h2, .exam-label, .label {
+    font-size: 3rem !important;
+  }
+  .exam-input {
+    text-align: center !important;
+    vertical-align: middle !important;
+    height: 2.2em !important;
+    line-height: 2.2em !important;
+  }
+}
+
+.pdf-exporting * {
+  font-size: 0.85rem !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+  overflow: visible !important;
+  height: fit-content !important;
+  min-height: fit-content !important;
+  max-height: none !important;
+}
+
+.pdf-exporting {
+  width: 100% !important;
+  height: fit-content !important;
+  min-height: fit-content !important;
+}
+
+.pdf-exporting .exam-item {
+  gap: 0.4em !important;
+  margin-bottom: 0.4em !important;
+  min-height: 1.5em !important;
+}
+
+.pdf-exporting .editable-div,
+.pdf-exporting .pdf-textarea,
+.pdf-exporting .compact-textarea,
+.pdf-exporting .exam-input,
+.pdf-exporting input[type="text"],
+.pdf-exporting textarea {
+  border: 1px solid #333 !important;
+  outline: none !important;
+  height: fit-content !important;
+  min-height: fit-content !important;
+  max-height: none !important;
+  width: 100% !important;
+  font-size: 0.85rem !important;
+  padding: 4px 6px !important;
+  margin: 2px 0 !important;
+  background: #fff !important;
+  border-radius: 0px !important;
+  line-height: 1.4 !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  hyphens: auto !important;
+  text-align: left !important;
+  text-wrap: wrap !important;
+}
+
+/* Ensure proper spacing around all form elements for border rendering */
+.pdf-exporting .chief-complaint-section,
+.pdf-exporting .history-section,
+.pdf-exporting .physical-exam-section,
+.pdf-exporting .assessment-plan-section {
+  padding: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+
+/* Prevent page-break interference with border rendering */
+.pdf-exporting * {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+/* Force aggressive text wrapping during PDF export */
+.pdf-exporting .editable-div,
+.pdf-exporting .pdf-textarea,
+.pdf-exporting .compact-textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+  hyphens: auto !important;
+  line-height: 1.0 !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 50px !important;
+  margin: 1px 0 !important;
+  padding: 4px 5px !important;
+  font-size: 0.8rem !important;
+  text-align: justify !important;
+  text-justify: inter-word !important;
+}
+
+
+
+input, .editable-div, .pdf-input, .exam-input, .signature-input, .pdf-textarea, .compact-textarea {
+  border: 1px solid #333 !important;
+  outline: none !important;
+  box-sizing: border-box;
+  margin: 2px 0;
+  padding: 4px 6px;
+}
+
+.pdf-container, .pdf-page {
+  border-collapse: separate !important;
+  border-spacing: 2px !important;
+}
+
+.history-section,
+.physical-exam-section {
+  margin-bottom: 6px !important;
+}
+
+.editable-div, .pdf-textarea, .compact-textarea {
+  min-height: 70px !important;
+  max-height: 200px !important;
+  font-size: 0.8rem !important;
+  width: 100%;
+  margin: 1px 0 !important;
+  padding: 4px 6px !important;
+  border: 1px solid #333 !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+  overflow-y: auto !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  hyphens: auto !important;
+  text-align: left !important;
+  text-wrap: wrap !important;
+  line-height: 1.0 !important;
+  resize: vertical !important;
+}
+
+.exam-input {
+  min-height: 24px !important;
+  font-size: 0.85rem !important;
+  margin: 3px 0 !important;
+  padding: 3px 5px !important;
+  border: 1px solid #333 !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+}
+
+.exam-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.8em !important;
+  margin: 2px 0 6px 0 !important;
+  min-height: 2.6em !important;
+}
+
+.exam-label {
+  margin-right: 0.4em !important;
+  min-width: 0 !important;
+  width: auto !important;
+  display: inline !important;
+  padding: 0 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Keep all borders for complete rectangles */
+.history-section .editable-div:last-child {
+  border-bottom: 1px solid #333 !important;
+}
+
+.physical-exam-section .exam-input:first-of-type {
+  border-top: 1px solid #333 !important;
+}
+
+.exam-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5em !important;
+  margin: 0 0 0.5em 0 !important;
+  padding: 0 !important;
+  min-height: 2.2em !important;
+}
+
+.exam-label {
+  margin-right: 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  display: inline !important;
+  padding: 0 !important;
+}
+
+.exam-input {
+  flex: 1 1 0 !important;
+  min-width: 100px !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0.3em 0.5em !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
