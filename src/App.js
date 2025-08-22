@@ -435,6 +435,19 @@ function App() {
           </div>
 
           <div className="history-section" style={{marginBottom: 0}}>
+            <h3>HISTORY OF PRESENT ILLNESS</h3>
+            <div
+              contentEditable={true}
+              name="historyOfPresentIllness"
+              suppressContentEditableWarning={true}
+              onInput={handleInputChange}
+              className="pdf-textarea compact-textarea editable-div"
+              placeholder="Describe the history of present illness..."
+              style={{minHeight: '12px'}}
+            >{formData.historyOfPresentIllness}</div>
+          </div>
+
+          <div className="history-section" style={{marginBottom: 0}}>
             <h3>PAST MEDICAL HISTORY</h3>
             <div
               contentEditable={true}
@@ -501,19 +514,6 @@ function App() {
                 >{formData.currentMeds}</div>
               </div>
             </div>
-          </div>
-
-          <div className="history-section" style={{marginBottom: 0}}>
-            <h3>HISTORY OF PRESENT ILLNESS</h3>
-            <div
-              contentEditable={true}
-              name="historyOfPresentIllness"
-              suppressContentEditableWarning={true}
-              onInput={handleInputChange}
-              className="pdf-textarea compact-textarea editable-div"
-              placeholder="Describe the history of present illness..."
-              style={{minHeight: '12px'}}
-            >{formData.historyOfPresentIllness}</div>
           </div>
 
           <div className="physical-exam-section">
